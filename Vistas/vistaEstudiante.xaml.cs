@@ -1,29 +1,79 @@
-using kvalladaresS6Online.Modelos;
+﻿using kvalladaresS6Online.Modelos;
 using Newtonsoft.Json;
-using System.Collections.ObjectModel;
 
-namespace kvalladaresS6Online.Vistas;
-
-public partial class vistaEstudiante : ContentPage
+namespace kvalladaresS6Online.Vistas
 {
-	private const string Url = "http://192.168.100.176/wsestudiante/restEstudiantes.php";
+    public partial class vistaEstudiante : ContentPage
+    {
+        public vistaEstudiante()
+        {
+            InitializeComponent();
+            CargarDatos();
+        }
 
-	private readonly HttpClient cliente = new HttpClient();
-	private ObservableCollection<Estudiante> _estudiante;
+        // ============================================
+        // 🔥 CARGA DE DATOS DESDE EL SERVICIO WEB
+        // ============================================
+        private async void CargarDatos()
+        {
+            try
+            {
+                string url = "http://127.0.0.1/wsestudiante/restEstudiantes.php";
+                var client = new HttpClient();
+                var json = await client.GetStringAsync(url);
 
+                var lista = JsonConvert.DeserializeObject<List<Estudiante>>(json);
 
-	public async void Mostrar()
-	{
-		var content = await cliente.GetStringAsync(Url);
-		List <Estudiante> mostrarEst = JsonConvert.DeserializeObject<List <Estudiante>>(content);
-		_estudiante = new ObservableCollection<Estudiante>(mostrarEst);
-		listaEstudiantes.ItemsSource = _estudiante;
+                listaEstudiantes.ItemsSource = lista;
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("ERROR", "No se pudo cargar los datos.\n" + ex.Message, "OK");
+            }
+        }
 
-	}
-	
-    public vistaEstudiante()
-	{
-		InitializeComponent();
-		Mostrar();
-	}
+        // ============================================
+        // 🔥 BOTÓN AGREGAR
+        // ============================================
+        private async void btnAgregar_Clicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new vistaAgregar());
+        }
+
+        // ============================================
+        // 🔥 SELECCIÓN DE ELEMENTO → ACTUALIZAR/ELIMINAR
+        // ============================================
+        private async void listaEstudiantes_ItemTapped(object sender, ItemTappedEventArgs e)
+        {
+            try
+            {
+                if (e.Item == null)
+                    return;
+
+                var estudiante = (Estudiante)e.Item;
+
+                await Navigation.PushAsync(new vistaActualizarEliminar(
+                    estudiante.codigo.ToString(),
+                    estudiante.nombre,
+                    estudiante.apellido,
+                    estudiante.edad.ToString()
+                ));
+
+                ((ListView)sender).SelectedItem = null; // deseleccionar
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("ERROR", "No se pudo abrir la vista.\n" + ex.Message, "OK");
+            }
+        }
+
+        // ============================================
+        // 🔥 CUANDO REGRESA A ESTA PANTALLA → REFRESCAR
+        // ============================================
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            CargarDatos();
+        }
+    }
 }
